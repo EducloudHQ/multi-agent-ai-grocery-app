@@ -1,2 +1,7 @@
 aws-cdk-lib==2.177.0
 constructs>=10.0.0,<11.0.0
+stripe==11.0.0
+stripe-agent-toolkit==0.2.0
+aws-cdk.aws-lambda-python-alpha==2.175.1a0
+cdklabs.generative-ai-cdk-constructs==0.1.289
+aws-cdk.aws-codestar-alpha==2.175.1a0

@@ -9,6 +9,7 @@ from aws_lambda_powertools import Logger, Tracer, Metrics
 from aws_lambda_powertools.event_handler import BedrockAgentResolver
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from aws_lambda_powertools.event_handler.openapi.params import Body, Query
+from utilities.utils import get_stripe_key
 
 tracer = Tracer()
 logger = Logger()
@@ -19,7 +20,7 @@ table_name = os.environ.get("ECOMMERCE_TABLE_NAME")
 
 table = dynamodb.Table(table_name)
 # Set your Stripe API key
-stripe.api_key = ""
+
 
 metrics = Metrics(namespace="grocery_agent_metrics")
 
@@ -45,6 +46,14 @@ def payment_link(
         ),
     ],
 ) -> Annotated[str, Body(description="Stripe payment link")]:
+    stripe_key = get_stripe_key()
+    if stripe_key is None:
+        logger.info("Stripe API key not set")
+        raise HTTPException()
+
+    # set stripe key
+    stripe.api_key = stripe_key
+
     # append correlation data to all generated logs
     logger.append_keys(
         session_id=app.current_event.session_id,

@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_lambda_event_sources as lambda_event_sources,
     aws_stepfunctions as sfn,
     aws_iam as iam,
+    aws_secretsmanager as secretsmanager,
     aws_appsync as appsync,
     aws_sqs as sqs,
     aws_dynamodb as dynamodb,
@@ -50,6 +51,13 @@ class GroceryAiAgentCdkStack(Stack):
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             stream=dynamodb.StreamViewType.NEW_IMAGE,
         )
+        # Step 1: Define the secret (if it doesn't already exist)
+        secret = secretsmanager.Secret(
+            self,
+            "StripeSecret",
+            secret_name="dev/stripe-secret",  # Replace with your secret name
+            description="Stripe secret key for the application",
+        )
 
         # AppSync API
         api = appsync.GraphqlApi(
@@ -83,8 +91,11 @@ class GroceryAiAgentCdkStack(Stack):
             runtime=Runtime.PYTHON_3_11,
             entry="./create_stripe_products",
             index="create_stripe_products.py",
+            tracing=Tracing.ACTIVE,
             handler="handler",
         )
+
+        secret.grant_read(create_stripe_products_lambda_function)
 
         action_group_function = PythonFunction(
             self,
@@ -95,6 +106,7 @@ class GroceryAiAgentCdkStack(Stack):
             index="app.py",
             handler="lambda_handler",
         )
+        secret.grant_read(action_group_function)
         action_group_function.add_environment(
             "ECOMMERCE_TABLE_NAME", ecommerce_table.table_name
         )

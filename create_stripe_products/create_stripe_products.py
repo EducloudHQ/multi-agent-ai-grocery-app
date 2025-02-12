@@ -1,15 +1,71 @@
 import json
-from http.client import HTTPException
+import os
+
+import boto3
+from botocore.exceptions import ClientError
 from aws_lambda_powertools import Logger, Tracer
 import stripe
+from stripe.error import StripeError
 
 from agent.utilities.utils import get_stripe_key
 
-with open("product_list.json", "r") as product_list:
-    product_list = json.load(product_list)
+dynamodb = boto3.resource("dynamodb")
+table_name = os.environ.get("ECOMMERCE_TABLE_NAME")
+table = dynamodb.Table(table_name)
+
+
+# Load product list from JSON file
+with open("product_list.json", "r") as product_list_file:
+    product_list = json.load(product_list_file)
 
 logger = Logger(service="create_stripe_products")
 tracer = Tracer(service="create_stripe_products_service")
+
+# Initialize DynamoDB client
+dynamodb = boto3.resource("dynamodb")
+table = dynamodb.Table("ProductsTable")  # Replace with your DynamoDB table name
+
+
+def bulk_add_products_to_dynamodb(products):
+    """
+    Bulk add products to DynamoDB.
+    Each product will have:
+    - PK: productId
+    - SK: stripe_price_id
+    - stripe: stripe_product_id
+    """
+    failed_items = []
+    try:
+        with table.batch_writer() as batch:
+            for product in products:
+                try:
+                    item = {
+                        "PK": product["productId"],  # Partition Key
+                        "SK": product["stripe_price_id"],  # Sort Key (Stripe Price ID)
+                        "name": product["name"],
+                        "description": product["description"],
+                        "category": product["category"],
+                        "createdDate": product["createdDate"],
+                        "modifiedDate": product["modifiedDate"],
+                        "tags": product["tags"],
+                        "package": product["package"],
+                        "pictures": product["pictures"],
+                        "price": product["price"],
+                        "stripe": product["stripe_product_id"],  # Stripe Product ID
+                    }
+                    batch.put_item(Item=item)
+                except ClientError as e:
+                    logger.error(
+                        f"Failed to add product {product['productId']} to DynamoDB: {e}"
+                    )
+                    failed_items.append(product)
+        if failed_items:
+            logger.error(f"Failed to add {len(failed_items)} items to DynamoDB")
+        else:
+            logger.info("Successfully bulk added products to DynamoDB")
+    except Exception as e:
+        logger.error(f"Unexpected error during bulk insert: {e}")
+        raise
 
 
 @logger.inject_lambda_context
@@ -17,18 +73,19 @@ tracer = Tracer(service="create_stripe_products_service")
 def handler(event, context):
     stripe_key = get_stripe_key()
     if stripe_key is None:
-        logger.info("Stripe API key not set")
-        raise HTTPException()
+        logger.error("Stripe API key not set")
+        raise ValueError("Stripe API key not set")
 
-    # set stripe key
+    # Set Stripe key
     stripe.api_key = stripe_key
-    print("Retrieving all products: %s", product_list)
-    print(f"item id is {product_list[0]['productId']}")
-    response = ""
+    logger.info("Retrieving all products: %s", product_list)
+
+    products_to_insert = []
+
     # Iterate through the list and create products and prices
     for product_data in product_list:
         try:
-            # Create a product
+            # Create a product in Stripe
             product = stripe.Product.create(
                 name=product_data["name"],
                 description=product_data["description"],
@@ -42,23 +99,34 @@ def handler(event, context):
                 },
                 images=product_data["pictures"],
             )
-            print(f"Product created: {product.name} (ID: {product.id})")
+            logger.info(f"Product created: {product.name} (ID: {product.id})")
 
-            # Create a price for the product
+            # Create a price for the product in Stripe
             price = stripe.Price.create(
                 unit_amount=product_data["price"],  # Price in cents
                 currency="usd",  # Currency code
                 product=product.id,  # Link to the product
             )
-            print(
+            logger.info(
                 f"Price created: {price.unit_amount / 100} {price.currency} (ID: {price.id})"
             )
-            response = "Product Created"
 
-        except stripe.error.StripeError as e:
-            print(
+            # Prepare product data for DynamoDB
+            product_data["stripe_product_id"] = product.id  # Stripe Product ID
+            product_data["stripe_price_id"] = price.id  # Stripe Price ID
+            products_to_insert.append(product_data)
+
+        except StripeError as e:
+            logger.error(
                 f"Error creating product or price for {product_data['name']}: {e.user_message}"
             )
-            response = "Failed to create Product"
+            continue  # Skip this product and continue with the next one
 
-    return response
+    # Bulk add products to DynamoDB
+    try:
+        bulk_add_products_to_dynamodb(products_to_insert)
+    except Exception as e:
+        logger.error(f"Failed to bulk add products to DynamoDB: {e}")
+        raise
+
+    return "Products and prices created successfully!"

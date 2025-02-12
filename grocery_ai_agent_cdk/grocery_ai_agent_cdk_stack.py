@@ -96,6 +96,10 @@ class GroceryAiAgentCdkStack(Stack):
         )
 
         secret.grant_read(create_stripe_products_lambda_function)
+        create_stripe_products_lambda_function.add_environment(
+            "ECOMMERCE_TABLE_NAME", ecommerce_table.table_name
+        )
+        ecommerce_table.grant_write_data(create_stripe_products_lambda_function)
 
         action_group_function = PythonFunction(
             self,

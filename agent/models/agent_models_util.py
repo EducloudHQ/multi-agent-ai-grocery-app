@@ -1,12 +1,7 @@
 import re
-import os
-from http.client import HTTPException
-from time import time
 from datetime import datetime
 from typing import List
-import boto3
-import stripe
-from pydantic import EmailStr, ValidationError, BaseModel, HttpUrl
+from pydantic import BaseModel
 
 
 class Package(BaseModel):
@@ -24,30 +19,37 @@ class Product(BaseModel):
     modifiedDate: datetime
     name: str
     package: Package
-    pictures: List[HttpUrl]
+    pictures: List[str]  # Changed from HttpUrl to str for simplicity
     price: int
     tags: List[str]
+
 
 class Item(BaseModel):
     name: str
     quantity: int
-    unit: str
+
 
 class ItemList(BaseModel):
     products: List[Item]
 
 
-
-
 def parse_raw_items(raw_data: List[str]) -> ItemList:
     # Join the list into a single string and normalize spacing
-    raw_string = " ".join(raw_data).replace("[", "").replace("]", "").replace("{", "").replace("}", "")
-    raw_string = re.sub(r'\s+', ' ', raw_string).strip()
+    raw_string = (
+        " ".join(raw_data)
+        .replace("[", "")
+        .replace("]", "")
+        .replace("{", "")
+        .replace("}", "")
+    )
+    raw_string = re.sub(r"\s+", " ", raw_string).strip()
 
     # Find all items using regex
-    matches = re.findall(r"name=([^,]+?)\s+quantity=(\d+)\s+unit=([a-zA-Z]+)", raw_string)
+    matches = re.findall(r"name=([^,]+?)\s+quantity=(\d+)", raw_string)
 
     # Convert to structured data
-    items = [Item(name=name.strip(), quantity=int(quantity), unit=unit.strip()) for name, quantity, unit in matches]
+    items = [
+        Item(name=name.strip(), quantity=int(quantity)) for name, quantity in matches
+    ]
 
     return ItemList(products=items)

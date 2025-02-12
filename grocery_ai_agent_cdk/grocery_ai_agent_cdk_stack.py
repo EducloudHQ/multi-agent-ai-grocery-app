@@ -52,11 +52,10 @@ class GroceryAiAgentCdkStack(Stack):
             stream=dynamodb.StreamViewType.NEW_IMAGE,
         )
         # Step 1: Define the secret (if it doesn't already exist)
-        secret = secretsmanager.Secret(
+        secret = secretsmanager.Secret.from_secret_name_v2(
             self,
-            "StripeSecret",
-            secret_name="dev/stripe-secret",  # Replace with your secret name
-            description="Stripe secret key for the application",
+            "ExistingStripeSecret",
+            secret_name="dev/stripe-secret",  # Name of the existing secret
         )
 
         # AppSync API
@@ -92,6 +91,7 @@ class GroceryAiAgentCdkStack(Stack):
             entry="./create_stripe_products",
             index="create_stripe_products.py",
             tracing=Tracing.ACTIVE,
+            timeout=Duration.seconds(300),
             handler="handler",
         )
 

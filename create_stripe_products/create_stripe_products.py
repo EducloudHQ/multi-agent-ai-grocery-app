@@ -5,9 +5,9 @@ import boto3
 from botocore.exceptions import ClientError
 from aws_lambda_powertools import Logger, Tracer
 import stripe
-from stripe.error import StripeError
+from stripe import StripeError
 
-from agent.utilities.utils import get_stripe_key
+from utilities.utils import get_stripe_key
 
 dynamodb = boto3.resource("dynamodb")
 table_name = os.environ.get("ECOMMERCE_TABLE_NAME")
@@ -20,10 +20,6 @@ with open("product_list.json", "r") as product_list_file:
 
 logger = Logger(service="create_stripe_products")
 tracer = Tracer(service="create_stripe_products_service")
-
-# Initialize DynamoDB client
-dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("ProductsTable")  # Replace with your DynamoDB table name
 
 
 def bulk_add_products_to_dynamodb(products):
@@ -40,7 +36,8 @@ def bulk_add_products_to_dynamodb(products):
             for product in products:
                 try:
                     item = {
-                        "PK": product["productId"],  # Partition Key
+                        # Partition Key
+                        "PK": product["stripe_product_id"],  # Partition Key
                         "SK": product["stripe_price_id"],  # Sort Key (Stripe Price ID)
                         "name": product["name"],
                         "description": product["description"],
@@ -51,7 +48,12 @@ def bulk_add_products_to_dynamodb(products):
                         "package": product["package"],
                         "pictures": product["pictures"],
                         "price": product["price"],
-                        "stripe": product["stripe_product_id"],  # Stripe Product ID
+                        "stripeProductId": product[
+                            "stripe_product_id"
+                        ],  # Stripe Product ID
+                        "stripePriceId": product[
+                            "stripe_price_id"
+                        ],  # Stripe Product ID
                     }
                     batch.put_item(Item=item)
                 except ClientError as e:

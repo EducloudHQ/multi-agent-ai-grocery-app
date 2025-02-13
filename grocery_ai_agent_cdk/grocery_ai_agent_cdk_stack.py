@@ -149,7 +149,28 @@ class GroceryAiAgentCdkStack(Stack):
                 # Grant access to all Bedrock models
             )
         )
+        # Create an IAM Role for Step Functions
+        step_function_role = iam.Role(
+            self,
+            "StepFunctionExecutionRole",
+            assumed_by=iam.ServicePrincipal("states.amazonaws.com"),
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AWSLambdaRole"
+                )
+            ],
+        )
 
+        # Add explicit permission to invoke the Lambda function URL
+        step_function_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["states:InvokeHTTPEndpoint"],
+                resources=["*"],  # You can replace with specific API endpoint ARN
+                conditions={
+                    "StringEquals": {"aws:SourceArn": invoke_agent_lambda_url.url}
+                },
+            )
+        )
         # Grant Lambda access to DynamoDB
         ecommerce_table.grant_write_data(batch_upload_products_lambda_function)
         batch_upload_products_lambda_function.add_environment(
@@ -392,7 +413,10 @@ class GroceryAiAgentCdkStack(Stack):
             ),
             # Use definition_body
             state_machine_type=sfn.StateMachineType.STANDARD,
+            role=step_function_role,
         )
+
+        invoke_agent_lambda.grant_invoke_url(state_machine)
 
         # Grant the Lambda function permissions to send task success/failure
         state_machine.grant_task_response(sqs_poller_lambda)

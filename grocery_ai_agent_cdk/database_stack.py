@@ -1,4 +1,4 @@
-from aws_cdk import Stack, aws_s3
+from aws_cdk import Stack
 from aws_cdk import aws_dynamodb as dynamodb
 from constructs import Construct
 
@@ -17,7 +17,6 @@ class DatabaseStack(Stack):
             ),
             sort_key=dynamodb.Attribute(name="SK", type=dynamodb.AttributeType.STRING),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            stream=dynamodb.StreamViewType.NEW_IMAGE,
         )
 
         # Add Global Secondary Indexes (GSIs)
@@ -42,15 +41,6 @@ class DatabaseStack(Stack):
             ),
             projection_type=dynamodb.ProjectionType.ALL,
         )
-        # Define the DynamoDB table
-        grocery_list_bucket = aws_s3.Bucket(
-            self,
-            "grocery-list-bucket",
-            versioned=False,
-            encryption=aws_s3.BucketEncryption.S3_MANAGED,
-            block_public_access=aws_s3.BlockPublicAccess.BLOCK_ALL,
-        )
 
         # Output the table name for use in other stacks
         self.ecommerce_table = ecommerce_table
-        self.grocery_list_bucket = grocery_list_bucket

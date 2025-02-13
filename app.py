@@ -1,28 +1,34 @@
 #!/usr/bin/env python3
-import os
 
 import aws_cdk as cdk
 
-from grocery_ai_agent_cdk.grocery_ai_agent_cdk_stack import GroceryAiAgentCdkStack
+from grocery_ai_agent_cdk.ai_agent_stack import AiAgentStack
+from grocery_ai_agent_cdk.api_lambda_s3_sfn_stack import ApiLambdaS3SfnStack
 
+from grocery_ai_agent_cdk.database_stack import DatabaseStack
+from grocery_ai_agent_cdk.sqs_stack import SQSStack
 
 app = cdk.App()
-GroceryAiAgentCdkStack(app, "GroceryAiAgentCdkStack",
-    # If you don't specify 'env', this stack will be environment-agnostic.
-    # Account/Region-dependent features and context lookups will not work,
-    # but a single synthesized template can be deployed anywhere.
 
-    # Uncomment the next line to specialize this stack for the AWS Account
-    # and Region that are implied by the current CLI configuration.
+sqs_stack = SQSStack(app, "SQSStack")
+# Create the database stack
+db_stack = DatabaseStack(app, "DatabaseStack")
 
-    #env=cdk.Environment(account=os.getenv('CDK_DEFAULT_ACCOUNT'), region=os.getenv('CDK_DEFAULT_REGION')),
+# Create the API and Lambda stack, passing the DynamoDB table
+api_lambda_stack = ApiLambdaS3SfnStack(
+    app,
+    "ApiLambdaS3SfnStack",
+    sqs_queue=sqs_stack.sqs_queue,
+    ecommerce_table=db_stack.ecommerce_table,
+)
 
-    # Uncomment the next line if you know exactly what Account and Region you
-    # want to deploy the stack to. */
-
-    #env=cdk.Environment(account='123456789012', region='us-east-1'),
-
-    # For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html
-    )
+# Create the AI Agent stack
+ai_agent_stack = AiAgentStack(
+    app,
+    "AiAgentStack",
+    secret=api_lambda_stack.secret,
+    invoke_agent_lambda=api_lambda_stack.invoke_agent_lambda,
+    ecommerce_table=db_stack.ecommerce_table,
+)
 
 app.synth()

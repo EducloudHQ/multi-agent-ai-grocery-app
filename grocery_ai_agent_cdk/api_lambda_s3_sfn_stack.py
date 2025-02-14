@@ -169,9 +169,7 @@ class ApiLambdaS3SfnStack(Stack):
         )
 
         # Step 3: Grant the Lambda function permissions to read from the S3 bucket
-        grocery_list_bucket.grant_read_write(
-            trigger_step_function_products_lambda_function
-        )
+        grocery_list_bucket.grant_read(trigger_step_function_products_lambda_function)
         # Add an S3 event notification to trigger the Lambda function
 
         # Step 5: Add an S3 event trigger to invoke the Lambda function

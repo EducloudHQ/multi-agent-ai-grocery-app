@@ -180,13 +180,7 @@ class ApiLambdaS3SfnStack(Stack):
         grocery_list_bucket.add_event_notification(
             aws_s3.EventType.OBJECT_CREATED, notification
         )
-        # Step 7: Grant the first Lambda function permissions to send messages to the SQS queue
-        sqs_queue.grant_send_messages(trigger_step_function_products_lambda_function)
 
-        # Step 8: Set the SQS queue URL as an environment variable for the Lambda function
-        trigger_step_function_products_lambda_function.add_environment(
-            "SQS_QUEUE_URL", sqs_queue.queue_url
-        )
         sqs_poller_lambda.add_to_role_policy(
             iam.PolicyStatement(
                 actions=["bedrock:InvokeModel"],
@@ -207,20 +201,6 @@ class ApiLambdaS3SfnStack(Stack):
             ),
             # Use definition_body
             state_machine_type=sfn.StateMachineType.STANDARD,
-        )
-
-        # Step 4: Grant the Lambda function permissions to use Textract
-        textract_policy = iam.PolicyStatement(
-            actions=[
-                "textract:DetectDocumentText",
-                "textract:StartDocumentTextDetection",
-                "textract:GetDocumentTextDetection",
-            ],
-            resources=["*"],  # Grant access to all Textract resources
-        )
-
-        trigger_step_function_products_lambda_function.add_to_role_policy(
-            textract_policy
         )
 
         # Grant the Lambda function permissions to send task success/failure

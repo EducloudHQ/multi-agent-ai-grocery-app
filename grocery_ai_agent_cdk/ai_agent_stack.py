@@ -48,6 +48,8 @@ class AiAgentStack(Stack):
         )
         executor_group = ActionGroupExecutor(lambda_=agent_lambda_function)
 
+        # agent action group
+
         action_group = AgentActionGroup(
             self,
             "ActionGroup",

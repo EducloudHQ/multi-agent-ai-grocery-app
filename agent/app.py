@@ -16,6 +16,7 @@ logger = Logger()
 app = BedrockAgentResolver()
 dynamodb = boto3.resource("dynamodb")
 
+
 table_name = os.environ.get("ECOMMERCE_TABLE_NAME")
 
 table = dynamodb.Table(table_name)
@@ -23,6 +24,14 @@ table = dynamodb.Table(table_name)
 
 
 metrics = Metrics(namespace="grocery_agent_metrics")
+stripe_key = get_stripe_key()
+if stripe_key is None:
+    logger.info("Stripe API key not set")
+    raise HTTPException()
+
+print("stripe_key", stripe_key)
+# set stripe key
+stripe.api_key = stripe_key
 
 
 @tracer.capture_method
@@ -34,26 +43,10 @@ def payment_link(
     products: Annotated[
         list,
         Query(
-            examples=[
-                "Create a Stripe payment link for the following items:Fresh smoothies, 2kg Fresh forest berries, "
-                "2kg Kiwi fruit,"
-                "3kg Ensure the link includes the total price based on the product rates.",
-                "Use the Stripe API to generate a payment link for these products:Fresh smoothies, 2kg Fresh forest "
-                "berries,"
-                "2kg Kiwi fruit, 3k Include the product names, quantities, and individual prices in the metadata.",
-            ],
             description="a list of products and quantities",
         ),
     ],
 ) -> Annotated[str, Body(description="Stripe payment link")]:
-    stripe_key = get_stripe_key()
-    if stripe_key is None:
-        logger.info("Stripe API key not set")
-        raise HTTPException()
-
-    # set stripe key
-    stripe.api_key = stripe_key
-
     # append correlation data to all generated logs
     logger.append_keys(
         session_id=app.current_event.session_id,
@@ -61,7 +54,8 @@ def payment_link(
         input_text=app.current_event.input_text,
     )
 
-    logger.info("products and quantities", products)
+    # parsed_items = parse_raw_items(products)
+    # logger.debug("Parsed", parsed_items.products[0].name, parsed_items.products[0].quantity)
 
     """
         Create a payment link for multiple products.
@@ -74,23 +68,27 @@ def payment_link(
         """
     try:
         line_items = []
+        logger.info("we're here")
+        print("products", products)
         parsed_items = parse_raw_items(products)
-        logger.debug(f"Parsed {parsed_items}")
-
+        print("parsed_items:", parsed_items.products[0].name)
+        logger.info(parsed_items.products[0].name)
         # Iterate through the list of products
         for product_info in parsed_items.products:
-            logger.debug("Product info: {}", product_info)
+            logger.info(f"Product info {product_info.name}")
             product_name = product_info.name
             qty = product_info.quantity
+            unit = product_info.unit
 
             if not product_name or not qty:
-                logger.error("Invalid product info: {}", product_info)
+                logger.error("Invalid product info:", product_info)
                 raise HTTPException()
 
-            logger.info("Processing product: {}, Quantity: {}", product_name, qty)
+            logger.info(f"Processing product: {product_name}, Quantity:{unit} ")
 
             # Step 1: Retrieve the product by name
             products_list = stripe.Product.list(limit=100)
+
             product = None
 
             # Filter products by name
@@ -103,21 +101,21 @@ def payment_link(
                 logger.error(f"No product found with name: {product_name}")
                 raise HTTPException()
 
-            logger.info("Product found! ID: {}", product.id)
+            logger.info(f"Product found! ID: {product.id}")
 
             # Step 2: Retrieve the price for the product
             prices = stripe.Price.list(
                 product=product.id, limit=1
             )  # Get the first price
             if not prices.data:
-                logger.error("No price found for product ID: {}", product.id)
+                logger.error("No price found for product ID:", product.id)
                 raise HTTPException()
 
             price = prices.data[0]  # Get the first price in the list
             logger.debug(
                 f"Price found! ID: {price.id}, Amount: {price.unit_amount / 100} {price.currency.upper()}"
             )
-            logger.debug("line_items 1: {}", line_items)
+            logger.info(f"line_items 1:{line_items}")
             # Add the product to the line items
             line_items.append(
                 {

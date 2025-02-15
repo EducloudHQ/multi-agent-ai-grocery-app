@@ -12,23 +12,12 @@ bedrock_agent_runtime_client = boto3.client(
 logger = Logger(service="invoke_agent")
 agent_id = os.environ.get("AGENT_ID")
 agent_alias = os.environ.get("AGENT_ALIAS")
+dynamodb = boto3.resource("dynamodb")
 
 
-def generate_stream(event_stream):
-    """
-    Generator function to process streamed data from AWS Bedrock Agent.
-    """
-    for event in event_stream:
-        if "chunk" in event:
-            data = event["chunk"]["bytes"]
-            agent_answer = data.decode("utf8")
-            logger.info(f"Chunk Data: {agent_answer}")
-            yield agent_answer
-        elif "trace" in event:
-            logger.info(f"Trace Event: {json.dumps(event['trace'], indent=2)}")
-        else:
-            logger.error(f"Unexpected Event Format: {event}")
-            raise ValueError("Unexpected event format in EventStream")
+table_name = os.environ.get("ECOMMERCE_TABLE_NAME")
+
+table = dynamodb.Table(table_name)
 
 
 def handler(event, context):
@@ -36,11 +25,11 @@ def handler(event, context):
         logger.info(f"Received event: {json.dumps(event, indent=2)}")
 
         # Parse the event body
-        event_body = json.loads(event["body"])
-        logger.info(f"Received event body: {event_body}")
+        grocery_list = event["grocery_list"]
+        logger.info(f"Received event body: {grocery_list}")
 
         # Extract grocery_list and validate
-        grocery_list = event_body.get("grocery_list")
+        # grocery_list = event_body.get("grocery_list")
         if not grocery_list:
             raise ValueError("Error: `grocery_list` is missing or empty.")
 
@@ -54,7 +43,7 @@ def handler(event, context):
         agent_response = bedrock_agent_runtime_client.invoke_agent(
             inputText=query,
             agentId=agent_id,
-            agentAliasId="5ITICN9XZ4",
+            agentAliasId="06J3ZLS1C3",
             sessionId=session_id,
             enableTrace=True,
         )
@@ -66,25 +55,29 @@ def handler(event, context):
         event_stream = agent_response["completion"]
 
         # Collect all chunks from the stream
-        final_response = ""
-        for chunk in generate_stream(event_stream):
-            final_response += chunk
+        chunks = []
+        for event in event_stream:
+            chunk = event.get("chunk")
+            if chunk:
+                decoded_bytes = chunk.get("bytes").decode()
+                print("bytes: ", decoded_bytes)
+                chunks.append(decoded_bytes)
+        completion = " ".join(chunks)
+
+        print(f"Completion: {completion}")
+
+        # save result to database
+        stripe_response = {
+            "PK": "PAYMENLINK",
+            "SK": f"USERID#{session_id}",
+            "payment_link": completion,
+        }
+        table.put_item(Item=stripe_response)
+
+        return completion
 
         # Return the final response to API Gateway
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": "application/json",
-            },
-            "body": json.dumps({"response": final_response}),
-        }
 
     except Exception as e:
         logger.error(f"Unhandled error: {e}")
-        return {
-            "statusCode": 500,
-            "headers": {
-                "Content-Type": "application/json",
-            },
-            "body": json.dumps({"error": str(e)}),
-        }
+        return "an error occured"

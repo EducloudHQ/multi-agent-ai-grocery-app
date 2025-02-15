@@ -36,6 +36,7 @@ def get_stripe_key() -> str:
 class Item(BaseModel):
     name: str
     quantity: int
+    unit: str
 
 
 class ItemList(BaseModel):
@@ -43,22 +44,22 @@ class ItemList(BaseModel):
 
 
 def parse_raw_items(raw_data: List[str]) -> ItemList:
-    # Join the list into a single string and normalize spacing
-    raw_string = (
-        " ".join(raw_data)
-        .replace("[", "")
-        .replace("]", "")
-        .replace("{", "")
-        .replace("}", "")
-    )
+    raw_string = " ".join(raw_data)
     raw_string = re.sub(r"\s+", " ", raw_string).strip()
 
-    # Find all items using regex
-    matches = re.findall(r"name=([^,]+?)\s+quantity=(\d+)", raw_string)
+    # Update regex to include unit
+    matches = re.findall(r"name=([^,]+?)\s+quantity=(\d+)\s+unit=([^}]+)", raw_string)
 
     # Convert to structured data
     items = [
-        Item(name=name.strip(), quantity=int(quantity)) for name, quantity in matches
+        Item(name=name.strip(), quantity=int(quantity), unit=unit.strip())
+        for name, quantity, unit in matches
     ]
 
     return ItemList(products=items)
+
+
+"""data = ['[{name=fresh smoothies', ' quantity=2', ' unit=kg}', ' {name=fresh forest berries', ' quantity=2', ' unit=kg}', ' {name=kiwi fruit', ' quantity=3', ' unit=kg}]']
+
+result = parse_raw_items(data)
+print("parsed_items:", result.products[0].name)"""

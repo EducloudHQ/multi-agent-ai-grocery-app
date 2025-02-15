@@ -17,10 +17,6 @@ from aws_cdk import (
 from aws_cdk.aws_dynamodb import Table
 from aws_cdk.aws_lambda import (
     Runtime,
-    FunctionUrlAuthType,
-    InvokeMode,
-    FunctionUrlCorsOptions,
-    HttpMethod,
 )
 from aws_cdk.aws_sqs import Queue
 from constructs import Construct
@@ -115,7 +111,8 @@ class ApiLambdaS3SfnStack(Stack):
             entry="./agent",
             index="invoke_agent.py",
             handler="handler",
-            timeout=Duration.seconds(300),
+            timeout=Duration.seconds(20),
+            memory_size=512,
         )
         sqs_poller_lambda = PythonFunction(
             self,
@@ -129,7 +126,7 @@ class ApiLambdaS3SfnStack(Stack):
 
         # Step 11: Grant the second Lambda function permissions to poll the SQS queue
         sqs_queue.grant_consume_messages(sqs_poller_lambda)
-
+        """
         invoke_agent_lambda_url = invoke_agent_lambda.add_function_url(
             auth_type=FunctionUrlAuthType.NONE,  # Public access
             invoke_mode=InvokeMode.RESPONSE_STREAM,
@@ -138,6 +135,7 @@ class ApiLambdaS3SfnStack(Stack):
                 allowed_methods=[HttpMethod.GET],  # Allow GET requests
             ),
         )
+        """
         invoke_agent_lambda.add_to_role_policy(
             iam.PolicyStatement(
                 actions=[
@@ -205,6 +203,10 @@ class ApiLambdaS3SfnStack(Stack):
 
         # Grant the Lambda function permissions to send task success/failure
         state_machine.grant_task_response(sqs_poller_lambda)
+        invoke_agent_lambda.grant_invoke(state_machine)
+        invoke_agent_lambda.add_environment(
+            "ECOMMERCE_TABLE_NAME", ecommerce_table.table_name
+        )
 
         trigger_step_function_products_lambda_function.add_environment(
             "STATE_MACHINE_ARN", state_machine.state_machine_arn
@@ -256,4 +258,4 @@ class ApiLambdaS3SfnStack(Stack):
         (CfnOutput(self, "GraphQLApiKey", value=api.api_key),)
         CfnOutput(self, "StateMachineArn", value=state_machine.state_machine_arn)
 
-        CfnOutput(self, "InvokeAgentFunctionUrl", value=invoke_agent_lambda_url.url)
+        # CfnOutput(self, "InvokeAgentFunctionUrl", value=invoke_agent_lambda_url.url)

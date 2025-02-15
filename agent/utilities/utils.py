@@ -1,5 +1,9 @@
+import re
+
 import boto3
 import json
+from typing import List
+from pydantic import BaseModel
 
 
 def get_stripe_key() -> str:
@@ -27,3 +31,34 @@ def get_stripe_key() -> str:
     except Exception as e:
         print(f"Error retrieving Stripe secret key: {e}")
         return ""
+
+
+class Item(BaseModel):
+    name: str
+    quantity: int
+
+
+class ItemList(BaseModel):
+    products: List[Item]
+
+
+def parse_raw_items(raw_data: List[str]) -> ItemList:
+    # Join the list into a single string and normalize spacing
+    raw_string = (
+        " ".join(raw_data)
+        .replace("[", "")
+        .replace("]", "")
+        .replace("{", "")
+        .replace("}", "")
+    )
+    raw_string = re.sub(r"\s+", " ", raw_string).strip()
+
+    # Find all items using regex
+    matches = re.findall(r"name=([^,]+?)\s+quantity=(\d+)", raw_string)
+
+    # Convert to structured data
+    items = [
+        Item(name=name.strip(), quantity=int(quantity)) for name, quantity in matches
+    ]
+
+    return ItemList(products=items)

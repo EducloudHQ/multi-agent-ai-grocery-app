@@ -1,7 +1,7 @@
 import os
 from http.client import HTTPException
 from time import time
-from models.agent_models_util import parse_raw_items
+
 import boto3
 import stripe
 from typing_extensions import Annotated
@@ -9,7 +9,7 @@ from aws_lambda_powertools import Logger, Tracer, Metrics
 from aws_lambda_powertools.event_handler import BedrockAgentResolver
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from aws_lambda_powertools.event_handler.openapi.params import Body, Query
-from utilities.utils import get_stripe_key
+from utilities.utils import get_stripe_key, parse_raw_items
 
 tracer = Tracer()
 logger = Logger()

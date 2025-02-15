@@ -111,7 +111,7 @@ class ApiLambdaS3SfnStack(Stack):
             entry="./agent",
             index="invoke_agent.py",
             handler="handler",
-            timeout=Duration.seconds(20),
+            timeout=Duration.minutes(2),
             memory_size=512,
         )
         sqs_poller_lambda = PythonFunction(
@@ -151,6 +151,7 @@ class ApiLambdaS3SfnStack(Stack):
                 # Grant access to all Bedrock models
             )
         )
+        ecommerce_table.grant_write_data(invoke_agent_lambda)
 
         # Add Lambda as a DataSource for AppSync
         lambda_ds = api.add_lambda_data_source(

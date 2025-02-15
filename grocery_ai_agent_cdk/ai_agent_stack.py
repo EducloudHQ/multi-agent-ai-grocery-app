@@ -1,4 +1,4 @@
-from aws_cdk import Stack
+from aws_cdk import Stack, Duration
 from aws_cdk.aws_dynamodb import Table
 from aws_cdk.aws_lambda import Runtime, Tracing
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
@@ -34,6 +34,8 @@ class AiAgentStack(Stack):
             entry="./agent",
             index="app.py",
             handler="lambda_handler",
+            timeout=Duration.minutes(2),
+            memory_size=512,
         )
         secret.grant_read(agent_lambda_function)
         agent_lambda_function.add_environment(

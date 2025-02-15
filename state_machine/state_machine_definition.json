@@ -105,40 +105,37 @@
       "Resource": "arn:aws:states:::sqs:sendMessage.waitForTaskToken",
       "QueryLanguage": "JSONata",
       "Arguments": {
-        "QueueUrl": "https://sqs.us-east-1.amazonaws.com/132260253285/GroceryAiAgentCdkStack-GroceryListTextExtractionQueue5F7937F7-MIPZKSfjB58g",
+        "QueueUrl": "https://sqs.us-east-1.amazonaws.com/132260253285/SQSStack-GroceryListTextExtractionQueue5F7937F7-SI2b20M5DXtg",
         "MessageBody": {
           "input": "{% $states.input %}",
           "taskToken": "{% $states.context.Task.Token %}"
         }
       },
-      "Next": "Call HTTPS APIs"
+      "Next": "Lambda Invoke"
     },
-    "Call HTTPS APIs": {
+    "Lambda Invoke": {
       "Type": "Task",
-      "Resource": "arn:aws:states:::http:invoke",
+      "Resource": "arn:aws:states:::lambda:invoke",
       "Retry": [
         {
           "ErrorEquals": [
-            "States.ALL"
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
           ],
-          "BackoffRate": 2,
           "IntervalSeconds": 1,
           "MaxAttempts": 3,
+          "BackoffRate": 2,
           "JitterStrategy": "FULL"
         }
       ],
+      "End": true,
       "QueryLanguage": "JSONata",
       "Arguments": {
-        "Method": "GET",
-        "ApiEndpoint": "https://cqo7txjtrxxbtzsltilklhxocy0ezlvd.lambda-url.us-east-1.on.aws/",
-        "InvocationConfig": {
-          "ConnectionArn": "arn:aws:events:us-east-1:132260253285:connection/grocery_agent_api_key/6ce9d5f6-6a24-4335-b57a-65a54271e015"
-        },
-        "RequestBody": {
-          "input": "{% $states.input %}"
-        }
-      },
-      "End": true
+        "Payload": "{% $states.input %}",
+        "FunctionName": "arn:aws:lambda:us-east-1:132260253285:function:ApiLambdaS3SfnStack-InvokeGroceryListAgent34AD530B-1pAllcobnqeo:$LATEST"
+      }
     }
   }
 }

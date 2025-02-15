@@ -19,6 +19,7 @@ dynamodb = boto3.resource("dynamodb")
 
 table_name = os.environ.get("ECOMMERCE_TABLE_NAME")
 
+
 table = dynamodb.Table(table_name)
 # Set your Stripe API key
 
@@ -28,8 +29,6 @@ stripe_key = get_stripe_key()
 if stripe_key is None:
     logger.info("Stripe API key not set")
     raise HTTPException()
-
-print("stripe_key", stripe_key)
 # set stripe key
 stripe.api_key = stripe_key
 
@@ -37,7 +36,7 @@ stripe.api_key = stripe_key
 @tracer.capture_method
 @app.get(
     "/payment_link",
-    description="Creates a stripe payment link when given a list of products and their quantities",
+    description="Creates a stripe payment link when given a list of products,their quantities and units",
 )
 def payment_link(
     products: Annotated[
@@ -54,14 +53,11 @@ def payment_link(
         input_text=app.current_event.input_text,
     )
 
-    # parsed_items = parse_raw_items(products)
-    # logger.debug("Parsed", parsed_items.products[0].name, parsed_items.products[0].quantity)
-
     """
         Create a payment link for multiple products.
 
         Args:
-            products: A list of dictionaries containing 'product_name' and 'qty'.
+            products: A list of dictionaries containing 'product_name' and 'qty' and unit.
 
         Returns:
             str: The payment link URL.
@@ -78,13 +74,12 @@ def payment_link(
             logger.info(f"Product info {product_info.name}")
             product_name = product_info.name
             qty = product_info.quantity
-            unit = product_info.unit
 
             if not product_name or not qty:
                 logger.error("Invalid product info:", product_info)
                 raise HTTPException()
 
-            logger.info(f"Processing product: {product_name}, Quantity:{unit} ")
+            logger.info(f"Processing product: {product_name}, Quantity:{qty} ")
 
             # Step 1: Retrieve the product by name
             products_list = stripe.Product.list(limit=100)

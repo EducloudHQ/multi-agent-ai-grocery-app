@@ -33,11 +33,11 @@ def handler(event: SQSEvent, context):
             logger.info(f"Extracted Data - Text: {input_text}, TaskToken: {task_token}")
 
             # Use the Bedrock foundation model to process the text
-            prompt = f"""You are a helpful assistant that extracts grocery items alongside their amount in kg and quantity if available, from text.
-            If the text contains a grocery list, respond with ONLY the list of items alongside their amount in kg and count if available in the following format:
-            - Item 1, kg, count
-            - Item 2, kg, count
-            - Item 3, kg, count
+            prompt = f"""You are a helpful assistant that extracts grocery items alongside their quantities and unit from text.
+            If the text contains a grocery list, respond with ONLY the list of items alongside their quantity and unit in this format:
+            - Item 1, kg
+            - Item 2, kg
+            - Item 3, kg
 
             If the text does NOT contain a grocery list, respond with: "No grocery list found."
 

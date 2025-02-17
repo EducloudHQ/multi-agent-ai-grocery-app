@@ -63,7 +63,12 @@ class ApiLambdaS3SfnStack(Stack):
             authorization_config=aws_appsync.AuthorizationConfig(
                 default_authorization=aws_appsync.AuthorizationMode(
                     authorization_type=aws_appsync.AuthorizationType.API_KEY
-                )
+                ),
+                additional_authorization_modes=[
+                    aws_appsync.AuthorizationMode(
+                        authorization_type=aws_appsync.AuthorizationType.IAM  # IAM Auth
+                    )
+                ],
             ),
         )
 
@@ -158,6 +163,44 @@ class ApiLambdaS3SfnStack(Stack):
             "LambdaDataSource", batch_upload_products_lambda
         )
 
+        # Define None DataSource
+        none_data_source = aws_appsync.CfnDataSource(
+            self,
+            "GroceryAppTableDataSource",
+            api_id=api.api_id,
+            name="NoneDataSource",
+            type="NONE",
+            description="None",
+        )
+
+        # Define Mutation Resolver
+        mutation_resolver = aws_appsync.CfnResolver(
+            self,
+            "GroceryAppMutationResolver",
+            api_id=api.api_id,
+            type_name="Mutation",
+            field_name="publish",
+            data_source_name=none_data_source.name,
+            request_mapping_template="""
+                       {
+                         "version": "2017-02-28",
+                         "payload": {
+                             "id": "$context.arguments.id",
+                             "source": "$context.arguments.source",
+                             "account": "$context.arguments.account",
+                             "time": "$context.arguments.time",
+                             "region": "$context.arguments.region",
+                             "detailType": "$context.arguments.detailType",
+                             "data": "$context.arguments.data"
+                         }
+                       }
+                   """,
+            response_mapping_template="$util.toJson($context.result)",
+        )
+
+        # Ensure the resolver depends on the DataSource
+        mutation_resolver.add_dependency(none_data_source)
+
         # Define Resolvers
         lambda_ds.create_resolver(
             id="BatchUploadProductsResolver",
@@ -251,6 +294,7 @@ class ApiLambdaS3SfnStack(Stack):
         self.trigger_step_function_products_lambda = (
             trigger_step_function_products_lambda_function
         )
+        self.appsync_api = api
         self.sqs_queue = sqs_queue
         self.grocery_list_bucket = grocery_list_bucket
 

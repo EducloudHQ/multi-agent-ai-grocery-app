@@ -17,6 +17,7 @@ class DatabaseStack(Stack):
             ),
             sort_key=dynamodb.Attribute(name="SK", type=dynamodb.AttributeType.STRING),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            stream=dynamodb.StreamViewType.NEW_IMAGE,
         )
 
         # Add Global Secondary Indexes (GSIs)

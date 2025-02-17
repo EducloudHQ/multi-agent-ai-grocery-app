@@ -2,14 +2,15 @@ import json
 import os
 
 import boto3
-from aws_lambda_powertools import Logger
+from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.utilities.data_classes.appsync import scalar_types_utils
 
 # Initialize Clients
 bedrock_agent_runtime_client = boto3.client(
     "bedrock-agent-runtime", region_name="us-east-1"
 )
-logger = Logger(service="invoke_agent")
+logger = Logger(service="invoke_agent_lambda")
+tracer = Tracer(service="invoke_agent_lambda")
 agent_id = os.environ.get("AGENT_ID")
 agent_alias = os.environ.get("AGENT_ALIAS")
 dynamodb = boto3.resource("dynamodb")
@@ -20,6 +21,8 @@ table_name = os.environ.get("ECOMMERCE_TABLE_NAME")
 table = dynamodb.Table(table_name)
 
 
+@logger.inject_lambda_context
+@tracer.capture_lambda_handler
 def handler(event, context):
     try:
         logger.info(f"Received event: {json.dumps(event, indent=2)}")
@@ -70,7 +73,7 @@ def handler(event, context):
         stripe_response = {
             "PK": "PAYMENLINK",
             "SK": f"USERID#{session_id}",
-            "payment_link": completion,
+            "payment_link": completion.replace("\n", ""),
         }
         table.put_item(Item=stripe_response)
 

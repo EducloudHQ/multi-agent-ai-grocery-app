@@ -45,4 +45,3 @@ class DatabaseStack(Stack):
 
         # Output the table name for use in other stacks
         self.ecommerce_table = ecommerce_table
-        self.ecommerce_table_stream_arn = ecommerce_table.table_stream_arn

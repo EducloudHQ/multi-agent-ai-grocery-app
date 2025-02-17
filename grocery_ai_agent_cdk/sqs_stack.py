@@ -10,6 +10,17 @@ class SQSStack(Stack):
         dlq = sqs.Queue(
             self, "GroceryListDLQ", retention_period=Duration.days(14)
         )  # Retain messages for 14 days
+        # Create Dead Letter Queues (DLQs)
+        self.target_dlq = sqs.Queue(
+            self,
+            "GroceryAppTargetDLQ",
+            queue_name="grocery-app-eb-appsync-dlq",
+        )
+
+        self.pipe_dlq = sqs.Queue(
+            self,
+            "GroceryAppPipeDLQueue",
+        )
 
         # Step 6: Create the main SQS queue with a DLQ
         self.sqs_queue = sqs.Queue(

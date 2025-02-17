@@ -17,6 +17,7 @@ class DatabaseStack(Stack):
             ),
             sort_key=dynamodb.Attribute(name="SK", type=dynamodb.AttributeType.STRING),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            stream=dynamodb.StreamViewType.NEW_IMAGE,
         )
 
         # Add Global Secondary Indexes (GSIs)
@@ -44,3 +45,4 @@ class DatabaseStack(Stack):
 
         # Output the table name for use in other stacks
         self.ecommerce_table = ecommerce_table
+        self.ecommerce_table_stream_arn = ecommerce_table.table_stream_arn

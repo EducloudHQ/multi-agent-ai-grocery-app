@@ -231,7 +231,7 @@ class ApiLambdaS3SfnStack(Stack):
         )
 
         # Load the ASL definition from the JSON file
-        with open("./state_machine/state_machine_definition.json", "r") as file:
+        with open("./state_machine/state_machine_definition.asl.json", "r") as file:
             state_machine_definition = json.load(file)
 
         # Create the Step Functions state machine using the ASL definition
@@ -241,6 +241,10 @@ class ApiLambdaS3SfnStack(Stack):
             definition_body=sfn.DefinitionBody.from_string(
                 json.dumps(state_machine_definition)
             ),
+            definition_substitutions={
+                "SQS_QUEUE_URL": sqs_queue.queue_url,
+                "INVOKE_LAMBDA_FUNCTION_ARN": invoke_agent_lambda.function_arn,
+            },
             # Use definition_body
             state_machine_type=sfn.StateMachineType.STANDARD,
         )

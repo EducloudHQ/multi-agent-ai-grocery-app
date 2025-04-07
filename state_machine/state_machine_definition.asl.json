@@ -105,7 +105,7 @@
       "Resource": "arn:aws:states:::sqs:sendMessage.waitForTaskToken",
       "QueryLanguage": "JSONata",
       "Arguments": {
-        "QueueUrl": "https://sqs.us-east-1.amazonaws.com/132260253285/SQSStack-GroceryListTextExtractionQueue5F7937F7-SI2b20M5DXtg",
+        "QueueUrl": "${SQS_QUEUE_URL}",
         "MessageBody": {
           "input": "{% $states.input %}",
           "taskToken": "{% $states.context.Task.Token %}"
@@ -134,7 +134,7 @@
       "QueryLanguage": "JSONata",
       "Arguments": {
         "Payload": "{% $states.input %}",
-        "FunctionName": "arn:aws:lambda:us-east-1:132260253285:function:ApiLambdaS3SfnStack-InvokeGroceryListAgent34AD530B-1pAllcobnqeo:$LATEST"
+        "FunctionName": "${INVOKE_LAMBDA_FUNCTION_ARN}"
       }
     }
   }

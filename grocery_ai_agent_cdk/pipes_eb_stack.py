@@ -100,7 +100,9 @@ class PipesAndEventbridgeStack(Stack):
         appsync_invocation_role.add_to_policy(
             iam.PolicyStatement(
                 actions=["appsync:GraphQL"],
-                resources=[appsync_api.arn],  # Replace with your AppSync API ARN
+                resources=[
+                    f"{appsync_api.arn}/types/Mutation/*"
+                ],  # Replace with your AppSync API ARN
             )
         )
 
@@ -137,10 +139,14 @@ class PipesAndEventbridgeStack(Stack):
                             "data": "$.detail.dynamodb.NewImage",
                             "detailType": "$.detail-type",
                         },
-                        input_template='{"data": <data>, "detailType": <detailType>, "id": <id>, "source": <source>, "account": <account>, "time": <time>, "region": <region>}',
+                        input_template='{"data": <data>, "detailType": <detailType>, "id": <id>, "source": <source>, '
+                        '"account": <account>, "time": <time>, "region": <region>}',
                     ),
                     app_sync_parameters=events.CfnRule.AppSyncParametersProperty(
-                        graph_ql_operation="mutation Publish($data:String!,$detailType:String!,$id:String!,$source:String!,$account:String!,$time:String!,$region:String!){publish(data:$data,detailType:$detailType,id:$id,source:$source,account:$account,time:$time,region:$region){data detailType id source account time region}}",
+                        graph_ql_operation="mutation Publish($data:String!,$detailType:String!,$id:String!,"
+                        "$source:String!,$account:String!,$time:String!,$region:String!){publish("
+                        "data:$data,detailType:$detailType,id:$id,source:$source,account:$account,"
+                        "time:$time,region:$region){data detailType id source account time region}}",
                     ),
                 ),
             ],

@@ -20,7 +20,7 @@ type Subscription {
 		@aws_subscribe(mutations: ["publish"])
 
 }
-type Event @aws_iam{
+type Event @aws_iam @aws_api_key{
 	id: String!
 	source: String!
 	account: String!

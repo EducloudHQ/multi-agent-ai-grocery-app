@@ -1,4 +1,4 @@
-from aws_cdk import Stack, Duration
+from aws_cdk import Stack, Duration, CfnOutput
 from aws_cdk.aws_dynamodb import Table
 from aws_cdk.aws_lambda import Runtime, Tracing
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
@@ -12,6 +12,7 @@ from cdklabs.generative_ai_cdk_constructs.bedrock import (
     Guardrail,
     Topic,
     ApiSchema,
+    AgentAlias,
 )
 
 
@@ -47,26 +48,32 @@ class AiAgentStack(Stack):
             "Agent",
             foundation_model=BedrockFoundationModel.ANTHROPIC_CLAUDE_3_5_SONNET_V1_0,
             instruction="You are a helpful and friendly AI assistant.",
+            should_prepare_agent=True,
         )
-        executor_group = ActionGroupExecutor(lambda_=agent_lambda_function)
+
+        executor_group = ActionGroupExecutor.fromlambda_function(
+            lambda_function=agent_lambda_function
+        )
 
         # agent action group
 
         action_group = AgentActionGroup(
-            self,
-            "ActionGroup",
-            action_group_name="GreatCustomerSupport",
+            name="GreatCustomerSupport",
             description="Use these functions for customer support",
-            action_group_executor=executor_group,
-            action_group_state="ENABLED",
-            api_schema=ApiSchema.from_asset("./agent/openapi.json"),
+            executor=executor_group,
+            enabled=True,
+            api_schema=ApiSchema.from_local_asset("./agent/openapi.json"),
+        )
+
+        agent_alias = AgentAlias(
+            self,
+            "AgentAlias",
+            agent=agent,
+            description="Alias for description",
+            alias_name="grocery_agent_alias",
         )
 
         ecommerce_table.grant_full_access(agent_lambda_function)
-
-        agent.add_alias(
-            alias_name="grocery_agent_alias", description="Alias for description"
-        )
 
         agent.add_action_group(action_group)
 
@@ -112,4 +119,6 @@ class AiAgentStack(Stack):
         agent.add_guardrail(agent_guardrail)
 
         invoke_agent_lambda.add_environment("AGENT_ID", agent.agent_id)
-        # invoke_agent_lambda.add_environment("AGENT_ALIAS", agent.alias_id)
+        invoke_agent_lambda.add_environment("AGENT_ALIAS", agent_alias.alias_id)
+
+        (CfnOutput(self, "AGENT_ALIAS", value=agent_alias.alias_id),)

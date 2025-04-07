@@ -46,7 +46,7 @@ def handler(event, context):
         agent_response = bedrock_agent_runtime_client.invoke_agent(
             inputText=query,
             agentId=agent_id,
-            agentAliasId="06J3ZLS1C3",
+            agentAliasId=agent_alias,
             sessionId=session_id,
             enableTrace=True,
         )

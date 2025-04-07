@@ -15,11 +15,11 @@ class SQSStack(Stack):
             self,
             "GroceryAppTargetDLQ",
             queue_name="grocery-app-eb-appsync-dlq",
+            retention_period=Duration.days(14),
         )
 
         self.pipe_dlq = sqs.Queue(
-            self,
-            "GroceryAppPipeDLQueue",
+            self, "GroceryAppPipeDLQueue", retention_period=Duration.days(14)
         )
 
         # Step 6: Create the main SQS queue with a DLQ

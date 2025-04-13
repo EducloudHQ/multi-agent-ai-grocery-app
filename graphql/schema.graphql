@@ -5,7 +5,7 @@ schema {
 }
 
 type Mutation {
-    publish(detailType: String!, id:String! data: String!, source: String!, account: String!, time: String!, region: String!): Event @aws_iam @aws_api_key
+    stripePaymentLink(data: String!): StripePaymentLinkResponse @aws_iam @aws_api_key
 
     batchUploadProducts: String
     createStripeProducts:String
@@ -16,17 +16,12 @@ type Query {
 }
 
 type Subscription {
-    subscribe(detailType: String, account: String, source: String, region: String): Event
-		@aws_subscribe(mutations: ["publish"])
+    onStripePaymentLinkResponse: StripePaymentLinkResponse
+		@aws_subscribe(mutations: ["stripePaymentLink"])
 
 }
-type Event @aws_iam @aws_api_key{
-	id: String!
-	source: String!
-	account: String!
-	time: String!
-	region: String!
-	detailType: String!
+type StripePaymentLinkResponse @aws_iam @aws_api_key{
+
 	data: AWSJSON!
 }
 

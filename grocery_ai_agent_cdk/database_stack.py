@@ -1,4 +1,4 @@
-from aws_cdk import Stack
+from aws_cdk import Stack, RemovalPolicy
 from aws_cdk import aws_dynamodb as dynamodb
 from constructs import Construct
 
@@ -15,6 +15,7 @@ class DatabaseStack(Stack):
             partition_key=dynamodb.Attribute(
                 name="PK", type=dynamodb.AttributeType.STRING
             ),
+            removal_policy=RemovalPolicy.DESTROY,
             sort_key=dynamodb.Attribute(name="SK", type=dynamodb.AttributeType.STRING),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             stream=dynamodb.StreamViewType.NEW_IMAGE,

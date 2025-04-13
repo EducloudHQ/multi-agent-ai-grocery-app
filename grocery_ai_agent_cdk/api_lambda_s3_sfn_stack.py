@@ -13,6 +13,7 @@ from aws_cdk import (
     aws_iam as iam,
     aws_s3,
     aws_s3_notifications,
+    RemovalPolicy,
 )
 from aws_cdk.aws_dynamodb import Table
 from aws_cdk.aws_lambda import (
@@ -45,6 +46,7 @@ class ApiLambdaS3SfnStack(Stack):
             self,
             "grocery-list-bucket",
             versioned=False,
+            removal_policy=RemovalPolicy.DESTROY,
             encryption=s3.BucketEncryption.S3_MANAGED,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
@@ -179,18 +181,12 @@ class ApiLambdaS3SfnStack(Stack):
             "GroceryAppMutationResolver",
             api_id=api.api_id,
             type_name="Mutation",
-            field_name="publish",
+            field_name="stripePaymentLink",
             data_source_name=none_data_source.name,
             request_mapping_template="""
                        {
                          "version": "2017-02-28",
                          "payload": {
-                             "id": "$context.arguments.id",
-                             "source": "$context.arguments.source",
-                             "account": "$context.arguments.account",
-                             "time": "$context.arguments.time",
-                             "region": "$context.arguments.region",
-                             "detailType": "$context.arguments.detailType",
                              "data": "$context.arguments.data"
                          }
                        }

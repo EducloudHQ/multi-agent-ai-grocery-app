@@ -5,6 +5,7 @@ from aws_cdk import (
     aws_iam as iam,
     aws_pipes as pipes,
     aws_appsync as appsync,
+    RemovalPolicy,
 )
 from aws_cdk.aws_appsync import GraphqlApi
 from aws_cdk.aws_dynamodb import Table
@@ -36,6 +37,7 @@ class PipesAndEventbridgeStack(Stack):
         log_group = logs.LogGroup(
             self,
             "GroceryAppEventLogs",
+            removal_policy=RemovalPolicy.DESTROY,
             log_group_name="/aws/events/GroceryAppLEventLogs",
             retention=logs.RetentionDays.ONE_WEEK,  # Adjust retention as needed
         )
@@ -131,22 +133,13 @@ class PipesAndEventbridgeStack(Stack):
                     ),
                     input_transformer=events.CfnRule.InputTransformerProperty(
                         input_paths_map={
-                            "id": "$.id",
-                            "source": "$.source",
-                            "account": "$.account",
-                            "time": "$.time",
-                            "region": "$.region",
-                            "data": "$.detail.dynamodb.NewImage",
-                            "detailType": "$.detail-type",
+                            "data": "$.detail.dynamodb.NewImage.payment_link.S"
                         },
-                        input_template='{"data": <data>, "detailType": <detailType>, "id": <id>, "source": <source>, '
-                        '"account": <account>, "time": <time>, "region": <region>}',
+                        input_template='{"data": <data>}',
                     ),
                     app_sync_parameters=events.CfnRule.AppSyncParametersProperty(
-                        graph_ql_operation="mutation Publish($data:String!,$detailType:String!,$id:String!,"
-                        "$source:String!,$account:String!,$time:String!,$region:String!){publish("
-                        "data:$data,detailType:$detailType,id:$id,source:$source,account:$account,"
-                        "time:$time,region:$region){data detailType id source account time region}}",
+                        graph_ql_operation="mutation StripePaymentLink($data:String!){stripePaymentLink("
+                        "data:$data){data}}",
                     ),
                 ),
             ],
